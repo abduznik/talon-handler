@@ -11,19 +11,19 @@ def update_file(file_path, new_version):
     with open(file_path, 'r') as f:
         content = f.read()
 
-    # Regex for standard version patterns
-    pattern = r'(version\s*=\s*["'])([^"']+)(["'])'
+    # Regex for standard version patterns - using double quotes to avoid confusion with single quotes inside
+    pattern = r"(version\s*=\s*[\"'])([^\"']+)([\"'])"
     
     if re.search(pattern, content):
-        new_content = re.sub(pattern, f'\g<1>{new_version}\g<3>', content)
+        new_content = re.sub(pattern, f"\g<1>{new_version}\g<3>", content)
         with open(file_path, 'w') as f:
             f.write(new_content)
         print(f"  -> Success: Version set to {new_version}")
     else:
         # Try a simpler __version__ pattern for __init__.py
-        init_pattern = r'(__version__\s*=\s*["'])([^"']+)(["'])'
+        init_pattern = r"(__version__\s*=\s*[\"'])([^\"']+)([\"'])"
         if re.search(init_pattern, content):
-            new_content = re.sub(init_pattern, f'\g<1>{new_version}\g<3>', content)
+            new_content = re.sub(init_pattern, f"\g<1>{new_version}\g<3>", content)
             with open(file_path, 'w') as f:
                 f.write(new_content)
             print(f"  -> Success: __version__ set to {new_version}")
