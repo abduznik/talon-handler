@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "talon-handler"
+version = "0.1.0"
+description = "High-performance, purely algorithmic Homelab service discovery and monitoring CLI."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "abduznik", email = "abduznik@users.noreply.github.com"}
+]
+dependencies = [
+    "typer[all]",
+    "rich",
+    "psutil",
+    "python-telegram-bot",
+    "python-dotenv"
+]
+
+[project.scripts]
+talon = "talon_handler.main:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["talon_handler*"]
