@@ -154,6 +154,10 @@ def monitor(detach: bool = typer.Option(False, "--detach", "-d", help="Run in th
         asyncio.run(start_services())
     except KeyboardInterrupt:
         console.print("\n[yellow]Talon Eye closed.[/yellow]")
+    except Exception as fatal_e:
+        with open("talon.log", "a") as log:
+            log.write(f"{os.getpid()} - FATAL ERROR: {fatal_e}\n")
+        console.print(f"[red]Fatal Error: {fatal_e}[/red]")
     finally:
         if os.path.exists(PID_FILE):
             os.remove(PID_FILE)
