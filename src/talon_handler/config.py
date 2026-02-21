@@ -53,12 +53,12 @@ class ConfigManager:
                     updated_data[key] = current_val
                 elif action == "R":
                     new_val = Prompt.ask(f"Enter new value for {label}")
-                    updated_data[key] = new_val
+                    updated_data[key] = new_val.strip("'\"")
                 else:
                     continue
             else:
                 new_val = Prompt.ask(f"Enter {label}", default=str(default))
-                updated_data[key] = new_val
+                updated_data[key] = new_val.strip("'\"")
 
         # Always preserve or update core technical state
         updated_data["watchlist"] = self.data.get("watchlist", {})

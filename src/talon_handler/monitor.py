@@ -12,6 +12,7 @@ class TalonMonitor:
     def __init__(self):
         self.config = ConfigManager()
         self.failure_counters: Dict[int, int] = {} # port -> consecutive failures
+        self.alert_sent: Dict[int, bool] = {} # port -> alert sent status
 
     def generate_dashboard(self, results: Dict[int, bool]):
         """Writes the Markdown dashboard."""
@@ -66,26 +67,34 @@ class TalonMonitor:
                     # Strike system
                     if not is_up:
                         self.failure_counters[port] = self.failure_counters.get(port, 0) + 1
-                        # Only alert on exactly the 3rd strike
-                        if self.failure_counters[port] == 3:
+                        strikes = self.failure_counters[port]
+                        
+                        # Alert if 3+ strikes and we haven't successfully notified yet
+                        if strikes >= 3 and not self.alert_sent.get(port, False):
                             if token and chat_id:
                                 name = self.config.data.get("service_names", {}).get(port_str, "Unknown")
-                                msg = f"⚠️ ALERT: Service '{name}' on port {port} is DOWN (3 consecutive failures)."
+                                msg = f"⚠️ ALERT: Service '{name}' on port {port} is DOWN (Strikes: {strikes})."
                                 try:
-                                    await send_telegram_alert(token, chat_id, msg)
+                                    with open("talon.log", "a") as log:
+                                        log.write(f"{datetime.now()}: Attempting alert for port {port}...\n")
+                                    await send_telegram_alert(token, int(chat_id), msg)
+                                    self.alert_sent[port] = True
+                                    with open("talon.log", "a") as log:
+                                        log.write(f"{datetime.now()}: Alert SENT for port {port}.\n")
                                 except Exception as te:
                                     with open("talon.log", "a") as log:
-                                        log.write(f"{datetime.now()}: Telegram Alert Failed: {te}\n")
+                                        log.write(f"{datetime.now()}: Telegram Alert FAILED for port {port}: {te}\n")
                     else:
                         # Reset counter and check for recovery
                         if self.failure_counters.get(port, 0) >= 3:
                              if token and chat_id:
                                 name = self.config.data.get("service_names", {}).get(port_str, "Unknown")
                                 try:
-                                    await send_telegram_alert(token, chat_id, f"✅ RECOVERED: Service '{name}' on port {port} is back UP.")
+                                    await send_telegram_alert(token, int(chat_id), f"✅ RECOVERED: Service '{name}' on port {port} is back UP.")
                                 except Exception:
                                     pass
                         self.failure_counters[port] = 0
+                        self.alert_sent[port] = False
                 
                 self.generate_dashboard(results)
             
