@@ -4,6 +4,7 @@ import os
 import signal
 import subprocess
 import sys
+from datetime import datetime
 from rich.console import Console
 from rich.table import Table
 from typing import Optional
@@ -117,8 +118,8 @@ def monitor(detach: bool = typer.Option(False, "--detach", "-d", help="Run in th
         return
 
     if detach:
-        # Launch same command without --detach in background
-        cmd = [sys.executable, "-m", "talon_handler.main", "monitor"]
+        # Launch the 'talon monitor' command itself in the background
+        cmd = ["talon", "monitor"]
         # Use subprocess to detach
         if os.name == 'nt':
             # Windows background
@@ -131,9 +132,12 @@ def monitor(detach: bool = typer.Option(False, "--detach", "-d", help="Run in th
         console.print("[bold green]🦅 Talon Eye has taken flight in the background.[/bold green]")
         return
 
-    # Write PID file
+    # Write PID file and initialize log
     with open(PID_FILE, "w") as f:
         f.write(str(os.getpid()))
+    
+    with open("talon.log", "a") as log:
+        log.write(f"{datetime.now()}: [PID {os.getpid()}] Talon Eye started.\n")
 
     cfg = ConfigManager()
     token = cfg.data.get("telegram_token")
