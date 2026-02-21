@@ -54,6 +54,7 @@ class TalonMonitor:
 
         while True:
             try:
+                self.config.reload() # Pick up new watchlist or token changes
                 watchlist = self.config.get_watchlist()
                 results = {}
                 
@@ -75,15 +76,13 @@ class TalonMonitor:
                                 name = self.config.data.get("service_names", {}).get(port_str, "Unknown")
                                 msg = f"⚠️ ALERT: Service '{name}' on port {port} is DOWN (Strikes: {strikes})."
                                 try:
-                                    with open("talon.log", "a") as log:
-                                        log.write(f"{datetime.now()}: Attempting alert for port {port}...\n")
                                     await send_telegram_alert(token, int(chat_id), msg)
                                     self.alert_sent[port] = True
                                     with open("talon.log", "a") as log:
-                                        log.write(f"{datetime.now()}: Alert SENT for port {port}.\n")
+                                        log.write(f"{datetime.now()}: [ALERT SENT] Port {port}\n")
                                 except Exception as te:
                                     with open("talon.log", "a") as log:
-                                        log.write(f"{datetime.now()}: Telegram Alert FAILED for port {port}: {te}\n")
+                                        log.write(f"{datetime.now()}: [ALERT FAILED] Port {port}: {te}\n")
                     else:
                         # Reset counter and check for recovery
                         if self.failure_counters.get(port, 0) >= 3:
@@ -97,6 +96,10 @@ class TalonMonitor:
                         self.alert_sent[port] = False
                 
                 self.generate_dashboard(results)
+                
+                # HEARTBEAT
+                with open("talon.log", "a") as log:
+                    log.write(f"{datetime.now()}: Heartbeat - Scan completed ({len(results)} ports checked).\n")
             
             except Exception as e:
                 with open("talon.log", "a") as log:

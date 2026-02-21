@@ -27,6 +27,10 @@ class ConfigManager:
                 console.print(f"[red]Error loading config: {e}[/red]")
         return {}
 
+    def reload(self):
+        """Reloads data from disk."""
+        self.data = self._load()
+
     def save(self):
         with open(self.config_path, "w") as f:
             json.dump(self.data, f, indent=4)
