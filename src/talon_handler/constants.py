@@ -22,3 +22,4 @@ COMMON_SERVICES = {
 
 CONFIG_FILE = "talon_config.json"
 DASHBOARD_FILE = "talon_dashboard.md"
+PID_FILE = "talon.pid"

@@ -1,5 +1,9 @@
 import typer
 import asyncio
+import os
+import signal
+import subprocess
+import sys
 from rich.console import Console
 from rich.table import Table
 from typing import Optional
@@ -7,9 +11,21 @@ from .config import ConfigManager
 from .discovery import scan_local_ports
 from .monitor import TalonMonitor
 from .telegram_bot import TalonBot
+from .constants import PID_FILE
 
 app = typer.Typer(help="🦅 Talon Handler: Homelab Service Discovery & Monitoring")
 console = Console()
+
+def is_running():
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE, "r") as f:
+                pid = int(f.read().strip())
+            os.kill(pid, 0)
+            return pid
+        except (ProcessLookupError, ValueError, OverflowError, PermissionError):
+            if os.path.exists(PID_FILE): os.remove(PID_FILE)
+    return None
 
 @app.command()
 def headstart():
@@ -28,15 +44,18 @@ def headstart():
     
     table = Table(title="Discovered Services")
     table.add_column("Port", style="cyan")
-    table.add_column("Mapped Service", style="magenta")
+    table.add_column("Detected Process / Service", style="magenta")
     
     watchlist = {}
+    service_names = {}
     for port, name in found:
         table.add_row(str(port), name)
-        watchlist[str(port)] = True # Enable all by default on first scan
+        watchlist[str(port)] = True 
+        service_names[str(port)] = name
     
     console.print(table)
     config.data["watchlist"] = watchlist
+    config.data["service_names"] = service_names
     
     # 2. Config Audit
     config.interactive_audit()
@@ -91,13 +110,37 @@ def filter():
     console.print("[green]Watchlist filters updated.[/green]")
 
 @app.command()
-def monitor():
+def monitor(detach: bool = typer.Option(False, "--detach", "-d", help="Run in the background")):
     """Starts the background monitoring loop and Telegram bot."""
+    if is_running():
+        console.print("[yellow]Talon is already running.[/yellow]")
+        return
+
+    if detach:
+        # Launch same command without --detach in background
+        cmd = [sys.executable, "-m", "talon_handler.main", "monitor"]
+        # Use subprocess to detach
+        if os.name == 'nt':
+            # Windows background
+            subprocess.Popen(cmd, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS, 
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
+        else:
+            # Linux background
+            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, start_new_session=True)
+        
+        console.print("[bold green]🦅 Talon Eye has taken flight in the background.[/bold green]")
+        return
+
+    # Write PID file
+    with open(PID_FILE, "w") as f:
+        f.write(str(os.getpid()))
+
     cfg = ConfigManager()
     token = cfg.data.get("telegram_token")
     
     if not token:
         console.print("[red]Telegram Token not found. Run 'talon headstart' first.[/red]")
+        if os.path.exists(PID_FILE): os.remove(PID_FILE)
         return
 
     console.print("[bold green]🦅 Talon Eye is watching...[/bold green]")
@@ -105,17 +148,33 @@ def monitor():
     async def start_services():
         bot = TalonBot(token)
         monitor = TalonMonitor()
-        
-        # Run bot and monitor loop concurrently
-        await asyncio.gather(
-            bot.run(),
-            monitor.run_loop()
-        )
+        await asyncio.gather(bot.run(), monitor.run_loop())
 
     try:
         asyncio.run(start_services())
     except KeyboardInterrupt:
         console.print("\n[yellow]Talon Eye closed.[/yellow]")
+    finally:
+        if os.path.exists(PID_FILE):
+            os.remove(PID_FILE)
+
+@app.command()
+def stop():
+    """Stops the background Talon monitor."""
+    pid = is_running()
+    if pid:
+        console.print(f"[cyan]Stopping Talon (PID: {pid})...[/cyan]")
+        try:
+            os.kill(pid, signal.SIGTERM)
+            # Short wait for cleanup
+            import time
+            time.sleep(0.5)
+            if os.path.exists(PID_FILE): os.remove(PID_FILE)
+            console.print("[green]Talon stopped successfully.[/green]")
+        except Exception as e:
+            console.print(f"[red]Failed to stop Talon: {e}[/red]")
+    else:
+        console.print("[yellow]Talon is not currently running.[/yellow]")
 
 if __name__ == "__main__":
     app()

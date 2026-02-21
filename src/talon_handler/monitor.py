@@ -33,11 +33,12 @@ class TalonMonitor:
         ]
         
         watchlist = self.config.get_watchlist()
+        service_names = self.config.data.get("service_names", {})
         for port_str, enabled in watchlist.items():
             if not enabled: continue
             
             port = int(port_str)
-            name = COMMON_SERVICES.get(port, "Unknown")
+            name = service_names.get(port_str, COMMON_SERVICES.get(port, "Unknown"))
             status_icon = "✅ UP" if results.get(port) else "❌ DOWN"
             lines.append(f"| {name} | {port} | {status_icon} |")
             
