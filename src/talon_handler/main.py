@@ -4,6 +4,7 @@ import os
 import signal
 import subprocess
 import sys
+import shutil
 from datetime import datetime
 from rich.console import Console
 from rich.table import Table
@@ -111,15 +112,19 @@ def filter():
     console.print("[green]Watchlist filters updated.[/green]")
 
 @app.command()
-def monitor(detach: bool = typer.Option(False, "--detach", "-d", help="Run in the background")):
+def monitor(
+    detach: bool = typer.Option(False, "--detach", "-d", help="Run in the background"),
+    force: bool = typer.Option(False, "--force", "-f", help="Force start even if PID file exists")
+):
     """Starts the background monitoring loop and Telegram bot."""
-    if is_running():
+    if not force and is_running():
         console.print("[yellow]Talon is already running.[/yellow]")
         return
 
     if detach:
-        # Launch the 'talon monitor' command itself in the background
-        cmd = ["talon", "monitor"]
+        # Get absolute path of 'talon' to ensure it's found in the detached session
+        talon_path = shutil.which("talon") or "talon"
+        cmd = [talon_path, "monitor"]
         # Use subprocess to detach
         if os.name == 'nt':
             # Windows background
