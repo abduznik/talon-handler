@@ -35,6 +35,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           package_dir: dist/
+          password: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Upload Release Assets to GitHub
         uses: softprops/action-gh-release@v1
