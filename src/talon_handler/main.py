@@ -75,6 +75,16 @@ def config():
     console.print("[green]Configuration updated successfully.[/green]")
 
 @app.command()
+def code():
+    """Generates a fresh 6-digit Ghost Auth code."""
+    cfg = ConfigManager()
+    otp = cfg.set_otp()
+    console.print(f"\n[bold yellow]👻 New Ghost Auth Code generated: {otp}[/bold yellow]")
+    console.print(f"1. Open your Telegram bot.")
+    console.print(f"2. Send: /start {otp}")
+    console.print(f"\n[dim](The background monitor will pick this up automatically)[/dim]")
+
+@app.command()
 def telegram(new: bool = typer.Option(False, "--new", help="Generate a fresh OTP")):
     """Telegram management and Ghost Auth."""
     cfg = ConfigManager()
