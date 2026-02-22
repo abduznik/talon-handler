@@ -14,9 +14,28 @@ from .discovery import scan_local_ports
 from .monitor import TalonMonitor
 from .telegram_bot import TalonBot
 from .constants import PID_FILE
+from . import __version__
+
+def version_callback(value: bool):
+    if value:
+        typer.echo(f"Talon Handler version: {__version__}")
+        raise typer.Exit()
 
 app = typer.Typer(help="🦅 Talon Handler: Homelab Service Discovery & Monitoring")
 console = Console()
+
+@app.callback()
+def main(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        "-v",
+        help="Show the version and exit.",
+        callback=version_callback,
+        is_eager=True,
+    )
+):
+    pass
 
 def is_running():
     if os.path.exists(PID_FILE):
